@@ -51,9 +51,11 @@ const userSchema: Schema<IUser> = new Schema(
     avatar: {
       public_id: {
         type: String,
+        required: true,
       },
       url: {
         type: String,
+        required: true,
       },
     },
     role: {
@@ -92,13 +94,13 @@ userSchema.methods.comparePassword = async function (
 
 userSchema.methods.generateAccessToken = async function (): Promise<string> {
   return jwt.sign({ id: this._id }, process.env.JWT_ACCESS_SECRET!, {
-    expiresIn: process.env.JWT_ACCESS_SECRET_EXPIRY,
+    expiresIn: "10m",
   });
 };
 
 userSchema.methods.generateRefreshToken = async function (): Promise<string> {
   return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_SECRET!, {
-    expiresIn: process.env.JWT_REFRESH_SECRET_EXPIRY,
+    expiresIn: "30d",
   });
 };
 

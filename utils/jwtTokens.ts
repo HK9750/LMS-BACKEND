@@ -20,36 +20,45 @@ interface iSendToken {
   message?: string;
 }
 
-export const sendToken = ({ user, statusCode, res, message }: iSendToken) => {
-  const accessToken = user.generateAccessToken();
-  const refreshToken = user.generateRefreshToken();
+const accessTokenExpiry = parseInt(
+  process.env.JWT_ACCESS_SECRET_EXPIRY || "10",
+  10
+);
+const refreshTokenExpiry = parseInt(
+  process.env.JWT_REFRESH_SECRET_EXPIRY || "7",
+  10
+);
+
+export const accessTokenOptions: iTokenOptions = {
+  expires: new Date(Date.now() + accessTokenExpiry * 60 * 1000), // Corrected to minutes
+  maxAge: accessTokenExpiry * 60 * 1000,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+};
+
+export const refreshTokenOptions: iTokenOptions = {
+  expires: new Date(Date.now() + refreshTokenExpiry * 24 * 60 * 60 * 1000),
+  maxAge: refreshTokenExpiry * 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+};
+
+export const sendToken = async ({
+  user,
+  statusCode,
+  res,
+  message,
+}: iSendToken) => {
+  const accessToken = await user.generateAccessToken();
+  const refreshToken = await user.generateRefreshToken();
+
+  if (typeof accessToken !== "string" || typeof refreshToken !== "string") {
+    throw new Error("Generated tokens must be strings");
+  }
 
   redis.set(user._id as string, JSON.stringify(user) as any);
-
-  const accessTokenExpiry = parseInt(
-    process.env.JWT_ACCESS_SECRET_EXPIRY || "300",
-    10
-  );
-  const refreshTokenExpiry = parseInt(
-    process.env.JWT_REFRESH_SECRET_EXPIRY || "1200",
-    10
-  );
-
-  const accessTokenOptions: iTokenOptions = {
-    expires: new Date(Date.now() + accessTokenExpiry * 1000),
-    maxAge: accessTokenExpiry * 1000,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-  };
-
-  const refreshTokenOptions: iTokenOptions = {
-    expires: new Date(Date.now() + refreshTokenExpiry * 1000),
-    maxAge: refreshTokenExpiry * 1000,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-  };
 
   res.cookie("accessToken", accessToken, accessTokenOptions);
   res.cookie("refreshToken", refreshToken, refreshTokenOptions);

@@ -7,7 +7,9 @@ import redis from "../utils/redis";
 export const Authenticate = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log(req.cookies);
       const access_token = req.cookies.accessToken;
+      console.log(access_token);
       if (!access_token) {
         return next(new ErrorHandler("Please login to access this route", 401));
       }

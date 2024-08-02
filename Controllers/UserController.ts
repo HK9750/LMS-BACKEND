@@ -5,7 +5,12 @@ import UserModel, { IUser } from "../Models/UserModel";
 import jwt from "jsonwebtoken";
 import redis from "../utils/redis";
 import { sendMail } from "../utils/sendMail";
-import { sendToken } from "../utils/jwtTokens";
+import cloudinary from "cloudinary";
+import {
+  accessTokenOptions,
+  refreshTokenOptions,
+  sendToken,
+} from "../utils/jwtTokens";
 
 interface iRegisterUserBody {
   name: string;
@@ -22,6 +27,36 @@ interface iLoginUserBody {
 interface iActivationToken {
   activationToken: string;
   activationCode: string;
+}
+
+interface iSocialAuthBody {
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+interface iUpdateUserBody {
+  name?: string;
+  email?: string;
+  avatar?: string;
+}
+
+interface iUpdateAvatarBody {
+  avatar: string;
+}
+
+interface iUpdatePasswordBody {
+  oldPassword: string;
+  newPassword: string;
+}
+
+interface iForgotPasswordBody {
+  email: string;
+}
+
+interface iResetPasswordBody {
+  resetToken: string;
+  newPassword: string;
 }
 
 export const registerUser = AsyncErrorHandler(
@@ -84,7 +119,15 @@ export const activateUser = AsyncErrorHandler(
         return next(new ErrorHandler("Invalid activation token", 400));
       }
       const { name, email, password } = decoded.user;
-      const user = await UserModel.create({ name, email, password });
+      const user = await UserModel.create({
+        name,
+        email,
+        password,
+        avatar: {
+          public_id: "",
+          url: "",
+        },
+      });
       try {
         sendToken({
           user,
@@ -139,16 +182,305 @@ export const logoutUser = AsyncErrorHandler(
       res.cookie("accessToken", "", {
         expires: new Date(Date.now()),
         httpOnly: true,
-        maxAge: 1,
       });
       res.cookie("refreshToken", "", {
         expires: new Date(Date.now()),
         httpOnly: true,
-        maxAge: 1,
       });
       res.status(200).json({
         success: true,
         message: "Logged out successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const updateAccessToken = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        return next(new ErrorHandler("Please login to access this route", 401));
+      }
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string
+      ) as { id: string };
+      if (!decoded) {
+        return next(new ErrorHandler("Invalid token", 401));
+      }
+      const user = await redis.get(decoded.id);
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+      const parsedUser = JSON.parse(user as string);
+      const accessToken = jwt.sign(
+        parsedUser,
+        process.env.JWT_ACCESS_SECRET as string,
+        { expiresIn: "5m" }
+      );
+      const newRefreshToken = jwt.sign(
+        parsedUser,
+        process.env.JWT_REFRESH_SECRET as string,
+        { expiresIn: "7d" }
+      );
+      res.cookie("accessToken", accessToken, accessTokenOptions);
+      res.cookie("refreshToken", newRefreshToken, refreshTokenOptions);
+      res.status(200).json({
+        success: true,
+        message: "Access token updated successfully",
+        accessToken,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const socialAuth = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, email, avatar } = req.body as iSocialAuthBody;
+      const user = await UserModel.findOne({ email });
+      if (user) {
+        sendToken({
+          user,
+          statusCode: 200,
+          res,
+          message: "Logged In successfully",
+        });
+      } else {
+        const newUser = await UserModel.create({ name, email, avatar });
+        sendToken({
+          user: newUser,
+          statusCode: 201,
+          res,
+          message: "Account created and logged in successfully",
+        });
+      }
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getUserById = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      const user = await UserModel.findById(userId);
+      res.status(200).json({
+        success: true,
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const updateUser = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, email } = req.body as iUpdateUserBody;
+      const userId = req.user?._id;
+      const user = await UserModel.findById(userId);
+      if (name && user) {
+        user.name = name;
+      }
+      if (email && user) {
+        const isEmailExists = await UserModel.findOne({ email });
+        if (isEmailExists) {
+          return next(new ErrorHandler("Email already exists", 400));
+        }
+        user.email = email;
+      }
+      await user?.save();
+      await redis.set(userId as string, JSON.stringify(user));
+      res.status(200).json({
+        success: true,
+        message: "User updated successfully",
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const updateAvatar = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { avatar } = req.body as iUpdateAvatarBody;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      if (avatar) {
+        if (user.avatar?.public_id) {
+          try {
+            await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+          } catch (cloudinaryError) {
+            console.error("Cloudinary destroy error:", cloudinaryError);
+            return next(new ErrorHandler("Error deleting old avatar", 500));
+          }
+        }
+        let myCloudAvatar;
+        try {
+          myCloudAvatar = await cloudinary.v2.uploader.upload(avatar, {
+            folder: "avatarslms",
+            width: 200,
+            crop: "scale",
+            height: 200,
+          });
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload error:", cloudinaryError);
+          return next(new ErrorHandler("Error uploading new avatar", 500));
+        }
+
+        user.avatar = {
+          public_id: myCloudAvatar.public_id,
+          url: myCloudAvatar.secure_url,
+        };
+      }
+
+      const newUser = await user.save();
+
+      try {
+        await redis.set(userId.toString(), JSON.stringify(newUser));
+      } catch (redisError) {
+        console.error("Redis set error:", redisError);
+        return next(new ErrorHandler("Error updating cache", 500));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Avatar updated successfully",
+        user: newUser,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const updatePassword = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { newPassword, oldPassword } = req.body as iUpdatePasswordBody;
+      const userId = req.user?._id;
+      const user = await UserModel.findById(userId).select("+password");
+      if (user?.password === undefined) {
+        return next(new ErrorHandler("Invalid User", 404));
+      }
+      if (!newPassword || !oldPassword) {
+        return next(
+          new ErrorHandler("Please provide old and new password", 400)
+        );
+      }
+      const isPasswordMatch = await user?.comparePassword(oldPassword);
+      if (!isPasswordMatch) {
+        return next(new ErrorHandler("Invalid password", 400));
+      }
+      user.password = newPassword;
+      await user?.save();
+      await redis.set(userId as string, JSON.stringify(user));
+      res.status(200).json({
+        success: true,
+        message: "Password updated successfully",
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const deleteUser = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      await UserModel.findByIdAndDelete(userId);
+      await redis.del(userId as string);
+      res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const forgotPassword = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email } = req.body as iForgotPasswordBody;
+      const user = await UserModel.findOne({ email });
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+      const resetToken = jwt.sign(
+        { id: user._id },
+        process.env.RESET_SECRET as string,
+        { expiresIn: "10m" }
+      );
+      try {
+        await sendMail({
+          to: email,
+          subject: "Password Reset",
+          template: "PasswordReset.ejs",
+          data: { user: user.name, resetToken },
+        });
+        res.status(200).json({
+          success: true,
+          message: `Password reset email sent successfully to ${email}`,
+          resetToken,
+        });
+      } catch (error: any) {
+        return next(new ErrorHandler(error.message, 500));
+      }
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const resetPassword = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { resetToken, newPassword } = req.body as iResetPasswordBody;
+      if (!resetToken || !newPassword) {
+        return next(
+          new ErrorHandler("Please provide reset token and password", 400)
+        );
+      }
+      const decoded = jwt.verify(
+        resetToken,
+        process.env.RESET_SECRET as string
+      ) as { id: string };
+      if (!decoded) {
+        return next(new ErrorHandler("Invalid token", 400));
+      }
+      const user = await UserModel.findById(decoded.id);
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+      user.password = newPassword;
+      await user.save();
+      await redis.set(decoded.id, JSON.stringify(user));
+      res.status(200).json({
+        success: true,
+        message: "Password reset successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
