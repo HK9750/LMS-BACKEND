@@ -44,10 +44,6 @@ interface iUpdateUserBody {
   avatar?: string;
 }
 
-interface iUpdateAvatarBody {
-  avatar: string;
-}
-
 interface iUpdatePasswordBody {
   oldPassword: string;
   newPassword: string;
@@ -273,10 +269,10 @@ export const getUserById = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?._id;
-      const user = await UserModel.findById(userId);
+      const user = await redis.get(userId as string);
       res.status(200).json({
         success: true,
-        user,
+        user: JSON.parse(user as string),
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

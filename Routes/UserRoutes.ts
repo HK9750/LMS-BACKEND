@@ -1,4 +1,5 @@
 import express from "express";
+import { Authenticate, Authorize } from "../middleware/Auth";
 import {
   registerUser,
   activateUser,
@@ -14,7 +15,6 @@ import {
   resetPassword,
   deleteUser,
 } from "../Controllers/UserController";
-import { Authenticate, Authorize } from "../middleware/Auth";
 
 const router = express.Router();
 
@@ -23,13 +23,16 @@ router.post("/activate", activateUser);
 router.post("/login", loginUser);
 router.post("/logout", Authenticate, logoutUser);
 router.post("/social", socialAuth);
+router.put("/update/token", Authenticate, updateAccessToken);
+
 router.get("/me", Authenticate, getUserById);
 router.put("/update", Authenticate, updateUser);
 router.put("/update-avatar", Authenticate, updateAvatar);
 router.put("/update/password", Authenticate, updatePassword);
-router.put("/update/token", Authenticate, updateAccessToken);
+
 router.post("/forgot", forgotPassword);
 router.post("/reset", resetPassword);
+
 router.delete("/delete", Authenticate, deleteUser);
 
 export default router;

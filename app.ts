@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import ErrorMiddleWare from "./middleware/Error";
 import UserRoutes from "./Routes/UserRoutes";
+import CourseRoutes from "./Routes/CourseRoutes";
 import fileUpload from "express-fileupload";
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes of our Application
 app.use("/api/v1", UserRoutes);
+app.use("/api/v1", CourseRoutes);
 
 app.get("/test", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
