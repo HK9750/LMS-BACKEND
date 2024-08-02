@@ -25,7 +25,7 @@ router.post("/logout", Authenticate, logoutUser);
 router.post("/social", socialAuth);
 router.get("/me", Authenticate, getUserById);
 router.put("/update", Authenticate, updateUser);
-router.put("/update/avatar", Authenticate, updateAvatar);
+router.put("/update-avatar", Authenticate, updateAvatar);
 router.put("/update/password", Authenticate, updatePassword);
 router.put("/update/token", Authenticate, updateAccessToken);
 router.post("/forgot", forgotPassword);

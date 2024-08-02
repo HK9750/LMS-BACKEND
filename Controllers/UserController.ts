@@ -11,6 +11,9 @@ import {
   refreshTokenOptions,
   sendToken,
 } from "../utils/jwtTokens";
+import fs from "fs";
+import path from "path";
+import fileUpload from "express-fileupload";
 
 interface iRegisterUserBody {
   name: string;
@@ -313,7 +316,11 @@ export const updateUser = AsyncErrorHandler(
 export const updateAvatar = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { avatar } = req.body as iUpdateAvatarBody;
+      if (!req.files || !req.files.avatar) {
+        return next(new ErrorHandler("No file uploaded", 400));
+      }
+
+      const file = req.files.avatar as fileUpload.UploadedFile;
       const userId = req.user?._id;
 
       if (!userId) {
@@ -325,33 +332,44 @@ export const updateAvatar = AsyncErrorHandler(
         return next(new ErrorHandler("User not found", 404));
       }
 
-      if (avatar) {
-        if (user.avatar?.public_id) {
-          try {
-            await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-          } catch (cloudinaryError) {
-            console.error("Cloudinary destroy error:", cloudinaryError);
-            return next(new ErrorHandler("Error deleting old avatar", 500));
-          }
-        }
-        let myCloudAvatar;
-        try {
-          myCloudAvatar = await cloudinary.v2.uploader.upload(avatar, {
-            folder: "avatarslms",
-            width: 200,
-            crop: "scale",
-            height: 200,
-          });
-        } catch (cloudinaryError) {
-          console.error("Cloudinary upload error:", cloudinaryError);
-          return next(new ErrorHandler("Error uploading new avatar", 500));
-        }
+      const tempFilePath = path.join(__dirname, "../temp", file.name);
 
-        user.avatar = {
-          public_id: myCloudAvatar.public_id,
-          url: myCloudAvatar.secure_url,
-        };
+      await new Promise<void>((resolve, reject) => {
+        file.mv(tempFilePath, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+
+      if (user.avatar?.public_id) {
+        try {
+          await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+        } catch (cloudinaryError) {
+          console.error("Cloudinary destroy error:", cloudinaryError);
+          fs.unlinkSync(tempFilePath);
+          return next(new ErrorHandler("Error deleting old avatar", 500));
+        }
       }
+
+      let myCloudAvatar;
+      try {
+        myCloudAvatar = await cloudinary.v2.uploader.upload(tempFilePath, {
+          folder: "avatarslms",
+          width: 200,
+          height: 200,
+        });
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload error:", cloudinaryError);
+        fs.unlinkSync(tempFilePath);
+        return next(new ErrorHandler("Error uploading new avatar", 500));
+      }
+
+      fs.unlinkSync(tempFilePath);
+
+      user.avatar = {
+        public_id: myCloudAvatar.public_id,
+        url: myCloudAvatar.secure_url,
+      };
 
       const newUser = await user.save();
 
