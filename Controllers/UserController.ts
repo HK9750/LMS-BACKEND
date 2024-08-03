@@ -14,6 +14,7 @@ import {
 import fs from "fs";
 import path from "path";
 import fileUpload from "express-fileupload";
+import ejs from "ejs";
 
 interface iRegisterUserBody {
   name: string;
@@ -73,6 +74,10 @@ export const registerUser = AsyncErrorHandler(
       };
       const { activationCode, activationToken } = createActivationToken(user);
       const data = { user: user.name, code: activationCode };
+      const html = await ejs.renderFile(
+        path.join(__dirname, "../mails/activation.ejs"),
+        data
+      );
       try {
         await sendMail({
           to: email,
@@ -448,12 +453,17 @@ export const forgotPassword = AsyncErrorHandler(
         process.env.RESET_SECRET as string,
         { expiresIn: "10m" }
       );
+      const data = { user: user.name, resetToken };
+      const html = await ejs.renderFile(
+        path.join(__dirname, "../mails/PasswordReset.ejs"),
+        data
+      );
       try {
         await sendMail({
           to: email,
           subject: "Password Reset",
           template: "PasswordReset.ejs",
-          data: { user: user.name, resetToken },
+          data,
         });
         res.status(200).json({
           success: true,

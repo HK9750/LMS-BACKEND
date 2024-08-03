@@ -5,6 +5,27 @@ import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import redis from "../utils/redis";
 import mongoose from "mongoose";
+import ejs from "ejs";
+import path from "path";
+import { sendMail } from "../utils/sendMail";
+
+interface iQuestionBody {
+  question: string;
+  courseId: string;
+  contentId: string;
+}
+
+interface iAnswerBody {
+  answer: string;
+  courseId: string;
+  contentId: string;
+  questionId: string;
+}
+
+interface iReviewBody {
+  rating: number;
+  review: string;
+}
 
 export const createCourse = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -174,6 +195,204 @@ export const getCourseByUser = AsyncErrorHandler(
       res.status(200).json({
         success: true,
         content: courseContent,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const addQuestion = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { question, courseId, contentId } = req.body as iQuestionBody;
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      if (!mongoose.Types.ObjectId.isValid(contentId)) {
+        return next(new ErrorHandler("Content id is not correct", 400));
+      }
+      const content = course.courseData.find(
+        (content: any) => content._id.toString() === contentId
+      );
+      if (!content) {
+        return next(new ErrorHandler("Content not found", 404));
+      }
+      const newQuestion: any = {
+        user: req.user,
+        question,
+        questionReplies: [],
+      };
+      content.questions.push(newQuestion);
+      await course.save();
+      await redis.del(courseId);
+      res.status(200).json({
+        success: true,
+        message: "Question added successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const addAnswerToQuestion = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { answer, courseId, contentId, questionId } =
+        req.body as iAnswerBody;
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      if (!mongoose.Types.ObjectId.isValid(contentId)) {
+        return next(new ErrorHandler("Content id is not correct", 400));
+      }
+      const content = course.courseData.find(
+        (content: any) => content._id.toString() === contentId
+      );
+      if (!content) {
+        return next(new ErrorHandler("Content not found", 404));
+      }
+      const question = content.questions.find(
+        (question: any) => question._id.toString() === questionId
+      );
+      if (!question) {
+        return next(new ErrorHandler("Question not found", 404));
+      }
+      const newAnswer: any = {
+        user: req.user,
+        comment: answer,
+        commentReplies: [],
+      };
+      question.commentReplies?.push(newAnswer);
+      await course.save();
+      await redis.del(courseId);
+      if (question.user?._id !== req.user?._id) {
+        const data = {
+          name: question.user.name,
+          title: content.title,
+          message: `Your question has been answered by ${req.user?.name}`,
+        };
+        const html = await ejs.renderFile(
+          path.join(__dirname, "../mails/questionReply.ejs"),
+          data
+        );
+        try {
+          await sendMail({
+            to: question.user.email,
+            subject: "Question Reply",
+            template: "questionReply.ejs",
+            data,
+          });
+        } catch (error: any) {
+          return next(new ErrorHandler(error.message, 500));
+        }
+      } else {
+        // Create notification that a question has been added by user to the course and this notification would be sent to the admin
+      }
+      res.status(200).json({
+        success: true,
+        message: "Answer added successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const addReview = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { rating, review } = req.body as iReviewBody;
+      const courses = req.user?.courses;
+      const courseId = req.params.id;
+      if (!mongoose.Types.ObjectId.isValid(courseId)) {
+        return next(new ErrorHandler("Course id is not valid", 400));
+      }
+      const isCourseExists = courses?.find(
+        (course: any) => course._id.toString() === courseId.toString()
+      );
+      if (!isCourseExists) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      const newReview: any = {
+        user: req.user,
+        rating: Number(rating),
+        comment: review,
+        commentReplies: [],
+      };
+      course.reviews.push(newReview);
+      course.ratings =
+        course.reviews.reduce(
+          (acc: number, item: any) => item.rating + acc,
+          0
+        ) / course.reviews.length;
+      await course.save();
+      await redis.del(courseId);
+      // Create notification that A review has been added to the course
+      res.status(200).json({
+        success: true,
+        message: "Review added successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const replyToTheReview = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { answer, courseId, reviewId } = req.body;
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      const review = course.reviews.find(
+        (review: any) => review._id.toString() === reviewId
+      );
+      if (!review) {
+        return next(new ErrorHandler("Review not found", 404));
+      }
+      const newAnswer: any = {
+        user: req.user,
+        comment: answer,
+        commentReplies: [],
+      };
+      review.commentReplies?.push(newAnswer);
+      await course.save();
+      await redis.del(courseId);
+      if (review.user._id !== req.user?._id) {
+        const data = {
+          name: review.user.name,
+          message: `Your review has been replied by ${req.user?.name}`,
+        };
+        const html = await ejs.renderFile(
+          path.join(__dirname, "../mails/ReviewReply.ejs"),
+          data
+        );
+        try {
+          await sendMail({
+            to: review.user.email,
+            subject: "Review Reply",
+            template: "ReviewReply.ejs",
+            data,
+          });
+        } catch (error: any) {
+          return next(new ErrorHandler(error.message, 500));
+        }
+      } else {
+        // Create a notification that your review has been replied by the admin
+      }
+      res.status(200).json({
+        success: true,
+        message: "Answer added successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
