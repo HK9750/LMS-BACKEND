@@ -59,6 +59,11 @@ interface iResetPasswordBody {
   newPassword: string;
 }
 
+interface iUserRoleBody {
+  role: string;
+  userId: string;
+}
+
 export const registerUser = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -424,22 +429,6 @@ export const updatePassword = AsyncErrorHandler(
   }
 );
 
-export const deleteUser = AsyncErrorHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user?._id;
-      await UserModel.findByIdAndDelete(userId);
-      await redis.del(userId as string);
-      res.status(200).json({
-        success: true,
-        message: "User deleted successfully",
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
 export const forgotPassword = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -505,6 +494,58 @@ export const resetPassword = AsyncErrorHandler(
       res.status(200).json({
         success: true,
         message: "Password reset successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getAllUsers = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const users = await UserModel.find().sort({ createdAt: -1 });
+      res.status(200).json({
+        success: true,
+        message: "GET request for all users successful",
+        users,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const updateUserRole = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { role, userId } = req.body as iUserRoleBody;
+      const user = await UserModel.findByIdAndUpdate(
+        userId,
+        { role },
+        { new: true }
+      );
+      await redis.del(userId);
+      res.status(200).json({
+        success: true,
+        message: "User role updated successfully",
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const deleteUser = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.params.id;
+      await UserModel.findByIdAndDelete(userId);
+      await redis.del(userId as string);
+      res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

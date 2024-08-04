@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import ejs from "ejs";
 import path from "path";
 import { sendMail } from "../utils/sendMail";
+import NotificationModel from "../Models/NotificationModel";
 
 interface iQuestionBody {
   question: string;
@@ -120,7 +121,7 @@ export const getSingleCourse = AsyncErrorHandler(
         console.log("Through redis");
         return res.status(200).json({
           success: true,
-          course: JSON.parse(course),
+          course,
         });
       } else {
         const course = await CourseModel.findById(courseId).select(
@@ -147,11 +148,11 @@ export const getAllCourses = AsyncErrorHandler(
     try {
       const coursesCache = await redis.get("courses");
       if (coursesCache) {
-        const courses = JSON.stringify(coursesCache);
+        const courses = JSON.parse(coursesCache);
         console.log("Through redis");
         res.status(200).json({
           success: true,
-          courses: JSON.parse(courses),
+          courses,
         });
       } else {
         const courses = await CourseModel.find().select(
@@ -227,6 +228,11 @@ export const addQuestion = AsyncErrorHandler(
       content.questions.push(newQuestion);
       await course.save();
       await redis.del(courseId);
+      await NotificationModel.create({
+        userId: req.user?._id,
+        title: "New Question",
+        message: `A new question has been asked in your course:${content.title}`,
+      });
       res.status(200).json({
         success: true,
         message: "Question added successfully",
@@ -269,28 +275,24 @@ export const addAnswerToQuestion = AsyncErrorHandler(
       question.commentReplies?.push(newAnswer);
       await course.save();
       await redis.del(courseId);
-      if (question.user?._id !== req.user?._id) {
-        const data = {
-          name: question.user.name,
-          title: content.title,
-          message: `Your question has been answered by ${req.user?.name}`,
-        };
-        const html = await ejs.renderFile(
-          path.join(__dirname, "../mails/questionReply.ejs"),
-          data
-        );
-        try {
-          await sendMail({
-            to: question.user.email,
-            subject: "Question Reply",
-            template: "questionReply.ejs",
-            data,
-          });
-        } catch (error: any) {
-          return next(new ErrorHandler(error.message, 500));
-        }
-      } else {
-        // Create notification that a question has been added by user to the course and this notification would be sent to the admin
+      const data = {
+        name: question.user.name,
+        title: content.title,
+        message: `Your question has been answered by ${req.user?.name}`,
+      };
+      const html = await ejs.renderFile(
+        path.join(__dirname, "../mails/questionReply.ejs"),
+        data
+      );
+      try {
+        await sendMail({
+          to: question.user.email,
+          subject: "Question Reply",
+          template: "questionReply.ejs",
+          data,
+        });
+      } catch (error: any) {
+        return next(new ErrorHandler(error.message, 500));
       }
       res.status(200).json({
         success: true,
@@ -336,6 +338,11 @@ export const addReview = AsyncErrorHandler(
       await course.save();
       await redis.del(courseId);
       // Create notification that A review has been added to the course
+      await NotificationModel.create({
+        userId: req.user?._id,
+        title: "New Review",
+        message: `A new review has been added to your course:${course.name}`,
+      });
       res.status(200).json({
         success: true,
         message: "Review added successfully",
@@ -368,31 +375,66 @@ export const replyToTheReview = AsyncErrorHandler(
       review.commentReplies?.push(newAnswer);
       await course.save();
       await redis.del(courseId);
-      if (review.user._id !== req.user?._id) {
-        const data = {
-          name: review.user.name,
-          message: `Your review has been replied by ${req.user?.name}`,
-        };
-        const html = await ejs.renderFile(
-          path.join(__dirname, "../mails/ReviewReply.ejs"),
-          data
-        );
-        try {
-          await sendMail({
-            to: review.user.email,
-            subject: "Review Reply",
-            template: "ReviewReply.ejs",
-            data,
-          });
-        } catch (error: any) {
-          return next(new ErrorHandler(error.message, 500));
-        }
-      } else {
-        // Create a notification that your review has been replied by the admin
+
+      const data = {
+        name: review.user.name,
+        message: `Your review has been replied to by ${req.user?.name}`,
+      };
+      const html = await ejs.renderFile(
+        path.join(__dirname, "../mails/ReviewReply.ejs"),
+        data
+      );
+      try {
+        await sendMail({
+          to: review.user.email,
+          subject: "Review Reply",
+          template: "ReviewReply.ejs",
+          data,
+        });
+      } catch (error: any) {
+        return next(new ErrorHandler(error.message, 500));
       }
       res.status(200).json({
         success: true,
         message: "Answer added successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const getAllCoursesAdmin = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courses = await CourseModel.find().sort({ createdAt: -1 });
+      if (!courses) {
+        return next(new ErrorHandler("No courses found", 404));
+      }
+      res.status(200).json({
+        success: true,
+        courses,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const deleteCourse = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const courseId = req.params.id;
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+      await cloudinary.v2.uploader.destroy(course.thumbnail?.public_id);
+      await CourseModel.findByIdAndDelete(courseId);
+      await redis.del(courseId);
+      res.status(200).json({
+        success: true,
+        message: "Course deleted successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation</title>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        background-color: #f9f9f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: 50px auto;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #4caf50;
+        text-align: center;
+      }
+      .details {
+        margin-bottom: 20px;
+        border-top: 1px solid #eeeeee;
+        padding-top: 20px;
+      }
+      .details p {
+        margin: 5px 0;
+        font-size: 16px;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999999;
+      }
+      .footer a {
+        color: #4caf50;
+        text-decoration: none;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Order Confirmation</h1>
+      <p>Dear Customer,</p>
+      <p>
+        Thank you for your purchase! Your order for the following course has
+        been successfully placed:
+      </p>
+      <div class="details">
+        <p><strong>Course Name:</strong> <%= name %></p>
+        <p><strong>Price:</strong> $<%= price %></p>
+        <p><strong>Order Date:</strong> <%= date %></p>
+        <p><strong>Order ID:</strong> <%= _id %></p>
+      </div>
+      <p>
+        We hope you enjoy your learning experience. If you have any questions,
+        feel free to contact our support team.
+      </p>
+      <div class="footer">
+        <p>Best regards,</p>
+        <p>The Course Team</p>
+        <p><a href="https://example.com">Visit our website</a></p>
+      </div>
+    </div>
+  </body>
+</html>
