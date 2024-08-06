@@ -11,8 +11,8 @@ const router = express.Router();
 
 router.get("/layout", Authenticate, getLayout);
 
+// Admin routes
 router.put("/layout/edit", Authenticate, Authorize("admin"), editLayout);
-
 router.post("/layout/create", Authenticate, Authorize("admin"), createLayout);
 
 export default router;

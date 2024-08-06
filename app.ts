@@ -5,6 +5,10 @@ import bodyParser from "body-parser";
 import ErrorMiddleWare from "./middleware/Error";
 import UserRoutes from "./Routes/UserRoutes";
 import CourseRoutes from "./Routes/CourseRoutes";
+import NotificationRoutes from "./Routes/NotificationRoutes";
+import OrderRoutes from "./Routes/OrderRoutes";
+import LayoutRoutes from "./Routes/LayoutRoutes";
+import AnalyticsRoutes from "./Routes/AnalyticsRoutes";
 import fileUpload from "express-fileupload";
 const app = express();
 
@@ -19,6 +23,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Routes of our Application
 app.use("/api/v1", UserRoutes);
 app.use("/api/v1", CourseRoutes);
+app.use("/api/v1", NotificationRoutes);
+app.use("/api/v1", OrderRoutes);
+app.use("/api/v1", LayoutRoutes);
+app.use("/api/v1", AnalyticsRoutes);
 
 app.get("/test", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({

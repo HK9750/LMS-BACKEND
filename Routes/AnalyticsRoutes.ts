@@ -8,6 +8,7 @@ import {
 
 const router = express.Router();
 
+// Admin routes
 router.get(
   "/analytics/user",
   Authenticate,

@@ -133,8 +133,8 @@ export const activateUser = AsyncErrorHandler(
         email,
         password,
         avatar: {
-          public_id: "",
-          url: "",
+          public_id: "something",
+          url: "something",
         },
       });
       try {

@@ -25,7 +25,7 @@ interface iAnswerBody {
 
 interface iReviewBody {
   rating: number;
-  review: string;
+  comment: string;
 }
 
 export const createCourse = AsyncErrorHandler(
@@ -222,7 +222,7 @@ export const addQuestion = AsyncErrorHandler(
       }
       const newQuestion: any = {
         user: req.user,
-        question,
+        comment: question,
         questionReplies: [],
       };
       content.questions.push(newQuestion);
@@ -246,8 +246,8 @@ export const addQuestion = AsyncErrorHandler(
 export const addAnswerToQuestion = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { answer, courseId, contentId, questionId } =
-        req.body as iAnswerBody;
+      const { answer, courseId, contentId } = req.body as iAnswerBody;
+      const questionId = req.params.id;
       const course = await CourseModel.findById(courseId);
       if (!course) {
         return next(new ErrorHandler("Course not found", 404));
@@ -307,14 +307,14 @@ export const addAnswerToQuestion = AsyncErrorHandler(
 export const addReview = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { rating, review } = req.body as iReviewBody;
+      const { rating, comment } = req.body as iReviewBody;
       const courses = req.user?.courses;
       const courseId = req.params.id;
       if (!mongoose.Types.ObjectId.isValid(courseId)) {
         return next(new ErrorHandler("Course id is not valid", 400));
       }
       const isCourseExists = courses?.find(
-        (course: any) => course._id.toString() === courseId.toString()
+        (course: any) => course.courseId.toString() === courseId.toString()
       );
       if (!isCourseExists) {
         return next(new ErrorHandler("Course not found", 404));
@@ -326,7 +326,7 @@ export const addReview = AsyncErrorHandler(
       const newReview: any = {
         user: req.user,
         rating: Number(rating),
-        comment: review,
+        comment,
         commentReplies: [],
       };
       course.reviews.push(newReview);

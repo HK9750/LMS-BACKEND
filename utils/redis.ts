@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const getRedisUrl = () => {
-  console.log(process.env.REDIS_URL);
   if (process.env.REDIS_URL) {
     console.log("REDIS_URL is defined.");
     return process.env.REDIS_URL;

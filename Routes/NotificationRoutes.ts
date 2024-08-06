@@ -8,6 +8,7 @@ import {
 
 const router = express.Router();
 
+// Notifications are only for the admin
 router.get(
   "/notifications",
   Authenticate,
