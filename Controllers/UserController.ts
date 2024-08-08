@@ -105,7 +105,7 @@ export const registerUser = AsyncErrorHandler(
 );
 
 const createActivationToken = (user: iRegisterUserBody): iActivationToken => {
-  const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const activationToken = jwt.sign(
     { user, activationCode },
     process.env.ACTIVATION_SECRET as string,
@@ -261,7 +261,20 @@ export const socialAuth = AsyncErrorHandler(
           message: "Logged In successfully",
         });
       } else {
-        const newUser = await UserModel.create({ name, email, avatar });
+        const cloudAvatar = await cloudinary.v2.uploader.upload(avatar, {
+          folder: "avatarslms",
+          width: 200,
+          height: 200,
+        });
+        const newUser = await UserModel.create({
+          name,
+          email,
+          password: `${email}123`,
+          avatar: {
+            public_id: cloudAvatar.public_id,
+            url: cloudAvatar.secure_url,
+          },
+        });
         sendToken({
           user: newUser,
           statusCode: 201,
