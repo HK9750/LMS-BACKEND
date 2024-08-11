@@ -17,8 +17,8 @@ const options = { origin: "http://localhost:3000", credentials: true };
 app.use(fileUpload());
 app.use(express.json({ limit: "50mb" }));
 app.use(cors(options));
-app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Routes of our Application
 app.use("/api/v1", UserRoutes);

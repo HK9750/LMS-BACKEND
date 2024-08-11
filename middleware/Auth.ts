@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import ErrorHandler from "../utils/ErrorHandler";
 import redis from "../utils/redis";
+import UserModel from "../Models/UserModel";
 
 export const Authenticate = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -18,11 +19,11 @@ export const Authenticate = AsyncErrorHandler(
       if (!decoded) {
         return next(new ErrorHandler("Invalid token", 401));
       }
-      const user = await redis.get(decoded.id);
+      const user = await UserModel.findById(decoded._id);
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
-      req.user = JSON.parse(user as string);
+      req.user = user;
       next();
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

@@ -24,7 +24,7 @@ router.post("/activate", activateUser);
 router.post("/login", loginUser);
 router.post("/logout", Authenticate, logoutUser);
 router.post("/social", socialAuth);
-router.put("/update/token", Authenticate, updateAccessToken);
+router.get("/update/token", updateAccessToken);
 
 router.get("/me", Authenticate, getUserById);
 router.put("/update", Authenticate, updateUser);

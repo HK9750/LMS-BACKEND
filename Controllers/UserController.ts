@@ -2,7 +2,7 @@ import ErrorHandler from "../utils/ErrorHandler";
 import AsyncErrorHandler from "../utils/AsyncErrorHandler";
 import { Request, Response, NextFunction } from "express";
 import UserModel, { IUser } from "../Models/UserModel";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import redis from "../utils/redis";
 import { sendMail } from "../utils/sendMail";
 import cloudinary from "cloudinary";
@@ -213,30 +213,37 @@ export const updateAccessToken = AsyncErrorHandler(
       if (!refreshToken) {
         return next(new ErrorHandler("Please login to access this route", 401));
       }
+
       const decoded = jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET as string
-      ) as { id: string };
+      ) as JwtPayload;
+
       if (!decoded) {
         return next(new ErrorHandler("Invalid token", 401));
       }
-      const user = await redis.get(decoded.id);
+      const user = await UserModel.findById(decoded._id);
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
-      const parsedUser = JSON.parse(user as string);
+
+      const userPayload = user.toObject();
+
       const accessToken = jwt.sign(
-        parsedUser,
+        userPayload,
         process.env.JWT_ACCESS_SECRET as string,
         { expiresIn: "5m" }
       );
+
       const newRefreshToken = jwt.sign(
-        parsedUser,
+        userPayload,
         process.env.JWT_REFRESH_SECRET as string,
         { expiresIn: "7d" }
       );
+
       res.cookie("accessToken", accessToken, accessTokenOptions);
       res.cookie("refreshToken", newRefreshToken, refreshTokenOptions);
+
       res.status(200).json({
         success: true,
         message: "Access token updated successfully",
@@ -292,10 +299,15 @@ export const getUserById = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?._id;
-      const user = await redis.get(userId as string);
+      const user = await UserModel.findById(userId);
+      console.log(user);
+      // if (!user) {
+      //   return next(new ErrorHandler("User not found", 404));
+      // }
       res.status(200).json({
         success: true,
-        user: JSON.parse(user as string),
+        message: "GET request for user successful",
+        user,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

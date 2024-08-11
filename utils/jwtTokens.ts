@@ -30,7 +30,7 @@ const refreshTokenExpiry = parseInt(
 );
 
 export const accessTokenOptions: iTokenOptions = {
-  expires: new Date(Date.now() + accessTokenExpiry * 60 * 1000), // Corrected to minutes
+  expires: new Date(Date.now() + accessTokenExpiry * 60 * 1000),
   maxAge: accessTokenExpiry * 60 * 1000,
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
