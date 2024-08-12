@@ -39,16 +39,15 @@ app.post("/test-upload", (req: Request, res: Response) => {
   if (!req.files || !req.files.file) {
     return res.status(400).send("No file uploaded.");
   }
-
-  app.all("*", (req: Request, res: Response, next: NextFunction) => {
-    const err = new Error("Route not found") as any;
-    err.statusCode = 404;
-    next(err);
-  });
-
   const uploadedFile = req.files.file;
   console.log(uploadedFile);
   res.send("File uploaded!");
+});
+
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  const err = new Error("Route not found") as any;
+  err.statusCode = 404;
+  next(err);
 });
 
 app.use(ErrorMiddleWare);

@@ -222,7 +222,9 @@ export const updateAccessToken = AsyncErrorHandler(
       if (!decoded) {
         return next(new ErrorHandler("Invalid token", 401));
       }
-      const user = await UserModel.findById(decoded._id);
+      const user = await UserModel.findById(
+        decoded.id ? decoded.id : decoded._id
+      );
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
@@ -300,10 +302,9 @@ export const getUserById = AsyncErrorHandler(
     try {
       const userId = req.user?._id;
       const user = await UserModel.findById(userId);
-      console.log(user);
-      // if (!user) {
-      //   return next(new ErrorHandler("User not found", 404));
-      // }
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
       res.status(200).json({
         success: true,
         message: "GET request for user successful",
