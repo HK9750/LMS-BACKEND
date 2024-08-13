@@ -36,6 +36,6 @@ router.post("/reset", resetPassword);
 
 // admin Routes
 router.get("/users/admin", Authenticate, Authorize("admin"), getAllUsers);
-router.delete("/delete", Authenticate, Authorize("admin"), deleteUser);
+router.delete("/delete-user/:id", Authenticate, Authorize("admin"), deleteUser);
 
 export default router;
