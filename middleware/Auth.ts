@@ -19,7 +19,9 @@ export const Authenticate = AsyncErrorHandler(
       if (!decoded) {
         return next(new ErrorHandler("Invalid token", 401));
       }
-      const user = await UserModel.findById(decoded._id);
+      const user = await UserModel.findById(
+        decoded._id ? decoded._id : decoded.id
+      );
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
