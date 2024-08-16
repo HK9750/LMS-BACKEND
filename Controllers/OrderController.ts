@@ -8,10 +8,13 @@ import CourseModel from "../Models/CourseModel";
 import path from "path";
 import ejs from "ejs";
 import { sendMail } from "../utils/sendMail";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 interface IOrderBody {
   courseId: string;
-  paymentInfo?: Object;
+  paymentInfo?: any;
 }
 
 export const createOrder = AsyncErrorHandler(
@@ -36,6 +39,15 @@ export const createOrder = AsyncErrorHandler(
       );
       if (isCoursePurchased) {
         return next(new ErrorHandler("Course already purchased", 400));
+      }
+      if (paymentInfo && paymentInfo?.id) {
+        const paymentIntent = await stripe.paymentIntents.retrieve(
+          paymentInfo.id
+        );
+
+        if (paymentIntent.status !== "succeeded") {
+          return next(new ErrorHandler("Payment not successful", 400));
+        }
       }
 
       const data = {
@@ -105,6 +117,55 @@ export const getAllOrders = AsyncErrorHandler(
         success: true,
         message: "GET request for all orders successful",
         orders,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const sendStripePublishableKey = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return next(new ErrorHandler("Stripe publishable key not found", 500));
+    }
+    res.status(200).json({
+      success: true,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  }
+);
+
+export const newPayment = AsyncErrorHandler(
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+    try {
+      const { amount, courseId } = req.body;
+
+      if (!req.user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      const course = await CourseModel.findById(courseId);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Stripe expects the amount in cents
+        currency: "usd",
+        description: `Payment for course: ${course.name}`,
+        metadata: {
+          userId: req.user._id.toString(),
+          courseId: courseId.toString(),
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        client_secret: paymentIntent.client_secret,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
