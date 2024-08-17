@@ -10,6 +10,7 @@ import {
   addQuestion,
   replyToTheReview,
   getAllCoursesAdmin,
+  deleteCourse,
 } from "../Controllers/CourseController";
 
 const router = express.Router();
@@ -34,6 +35,12 @@ router.get(
   Authenticate,
   Authorize("admin"),
   getAllCoursesAdmin
+);
+router.delete(
+  "/course/delete/:id",
+  Authenticate,
+  Authorize("admin"),
+  deleteCourse
 );
 
 export default router;

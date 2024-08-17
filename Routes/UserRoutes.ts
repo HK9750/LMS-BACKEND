@@ -15,6 +15,7 @@ import {
   resetPassword,
   deleteUser,
   getAllUsers,
+  updateUserRole,
 } from "../Controllers/UserController";
 
 const router = express.Router();
@@ -37,5 +38,11 @@ router.post("/reset", resetPassword);
 // admin Routes
 router.get("/users/admin", Authenticate, Authorize("admin"), getAllUsers);
 router.delete("/delete-user/:id", Authenticate, Authorize("admin"), deleteUser);
+router.put(
+  "/update-role/:id",
+  Authenticate,
+  Authorize("admin"),
+  updateUserRole
+);
 
 export default router;
