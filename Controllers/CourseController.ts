@@ -185,17 +185,28 @@ export const getCourseByUser = AsyncErrorHandler(
       if (!mongoose.Types.ObjectId.isValid(courseId)) {
         return next(new ErrorHandler("Course id is required", 400));
       }
+      console.log(userCourses);
       const isCourseExist = userCourses?.find(
-        (course: any) => course?._id.toString() === courseId.toString()
+        (course: any) => course?.courseId.toString() === courseId.toString()
       );
       if (!isCourseExist) {
         return next(new ErrorHandler("Course not found", 404));
       }
-      const course = await CourseModel.findById(courseId);
-      const courseContent = course?.courseData;
+      const course = await CourseModel.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(courseId),
+          },
+        },
+        {
+          $project: {
+            courseData: 1,
+          },
+        },
+      ]);
       res.status(200).json({
         success: true,
-        content: courseContent,
+        content: course,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

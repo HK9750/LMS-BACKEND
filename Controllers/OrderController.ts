@@ -151,12 +151,23 @@ export const newPayment = AsyncErrorHandler(
       }
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Stripe expects the amount in cents
+        amount: Math.round(amount * 100),
         currency: "usd",
         description: `Payment for course: ${course.name}`,
         metadata: {
           userId: req.user._id.toString(),
           courseId: courseId.toString(),
+        },
+        shipping: {
+          name: req.user.name || "John Doe",
+          address: {
+            line1: "1234 Main St",
+            line2: "",
+            city: "Anytown",
+            state: "CA",
+            postal_code: "12345",
+            country: "US",
+          },
         },
         automatic_payment_methods: {
           enabled: true,
