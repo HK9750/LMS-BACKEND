@@ -49,21 +49,29 @@ interface ICourse extends Document {
   purchased?: number;
 }
 
-const commentSchema = new Schema<IComment>({
-  user: Object,
-  comment: String,
-  commentReplies: [Object],
-});
-
-const reviewSchema = new Schema<IReview>({
-  user: Object,
-  rating: {
-    type: Number,
-    default: 0,
+const commentSchema = new Schema<IComment>(
+  {
+    user: Object,
+    comment: String,
+    commentReplies: [Object],
   },
-  comment: String,
-  commentReplies: [Object],
-});
+  {
+    timestamps: true,
+  }
+);
+
+const reviewSchema = new Schema<IReview>(
+  {
+    user: Object,
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    comment: String,
+    commentReplies: [Object],
+  },
+  { timestamps: true }
+);
 
 const linkSchema = new Schema<ILink>({
   title: String,

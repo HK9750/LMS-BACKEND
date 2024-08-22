@@ -201,6 +201,7 @@ export const getCourseByUser = AsyncErrorHandler(
         {
           $project: {
             courseData: 1,
+            reviews: 1,
           },
         },
       ]);
