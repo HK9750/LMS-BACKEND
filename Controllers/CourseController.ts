@@ -185,7 +185,6 @@ export const getCourseByUser = AsyncErrorHandler(
       if (!mongoose.Types.ObjectId.isValid(courseId)) {
         return next(new ErrorHandler("Course id is required", 400));
       }
-      console.log(userCourses);
       const isCourseExist = userCourses?.find(
         (course: any) => course?.courseId.toString() === courseId.toString()
       );
@@ -240,6 +239,7 @@ export const addQuestion = AsyncErrorHandler(
       content.questions.push(newQuestion);
       await course.save();
       await redis.del(courseId);
+      await redis.del("courses");
       await NotificationModel.create({
         userId: req.user?._id,
         title: "New Question",
@@ -287,6 +287,7 @@ export const addAnswerToQuestion = AsyncErrorHandler(
       question.commentReplies?.push(newAnswer);
       await course.save();
       await redis.del(courseId);
+      await redis.del("courses");
       const data = {
         name: question.user.name,
         title: content.title,
@@ -349,6 +350,7 @@ export const addReview = AsyncErrorHandler(
         ) / course.reviews.length;
       await course.save();
       await redis.del(courseId);
+      await redis.del("courses");
       // Create notification that A review has been added to the course
       await NotificationModel.create({
         userId: req.user?._id,
@@ -387,7 +389,7 @@ export const replyToTheReview = AsyncErrorHandler(
       review.commentReplies?.push(newAnswer);
       await course.save();
       await redis.del(courseId);
-
+      await redis.del("courses");
       const data = {
         name: review.user.name,
         message: `Your review has been replied to by ${req.user?.name}`,
