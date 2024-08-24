@@ -12,6 +12,8 @@ import {
   getAllCoursesAdmin,
   deleteCourse,
   getCourseByUser,
+  getTopCourseReviews,
+  searchCourses,
 } from "../Controllers/CourseController";
 
 const router = express.Router();
@@ -23,6 +25,8 @@ router.put("/course/question", Authenticate, addQuestion);
 router.put("/course/answer/:id", Authenticate, addAnswerToQuestion);
 
 router.get("/courses/user/:id", Authenticate, getCourseByUser);
+router.get("/courses/reviews", getTopCourseReviews);
+router.get("/courses/search/name", searchCourses);
 
 // Admin routes
 router.put("/course/edit/:id", Authenticate, Authorize("admin"), editCourse);

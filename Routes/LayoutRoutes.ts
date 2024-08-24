@@ -9,7 +9,7 @@ import {
 
 const router = express.Router();
 
-router.get("/layout", Authenticate, getLayout);
+router.get("/layout", getLayout);
 
 // Admin routes
 router.put("/layout/edit", Authenticate, Authorize("admin"), editLayout);

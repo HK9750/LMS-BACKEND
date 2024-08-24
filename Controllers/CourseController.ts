@@ -455,3 +455,98 @@ export const deleteCourse = AsyncErrorHandler(
     }
   }
 );
+
+export const getTopCourseReviews = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const topCourseReviews = await CourseModel.aggregate([
+        { $sort: { purchased: -1 } },
+        { $limit: 6 },
+        { $unwind: "$reviews" },
+        {
+          $project: {
+            _id: "$reviews._id",
+            courseName: "$name",
+            user: {
+              name: "$reviews.user.name",
+              email: "$reviews.user.email",
+              avatar: "$reviews.user.avatar",
+            },
+            rating: "$reviews.rating",
+            comment: "$reviews.comment",
+          },
+        },
+        { $limit: 6 },
+      ]);
+
+      if (!topCourseReviews.length) {
+        return next(new ErrorHandler("No reviews found", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        topCourseReviews,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+export const searchCourses = AsyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { query } = req.query;
+
+      if (!query || typeof query !== "string") {
+        return next(new ErrorHandler("Search query is required", 400));
+      }
+
+      const cachedResults = await redis.get(`search:${query}`);
+      if (cachedResults) {
+        const courses = JSON.parse(cachedResults);
+        console.log("Through redis");
+        return res.status(200).json({
+          success: true,
+          courses,
+        });
+      }
+
+      const courses = await CourseModel.aggregate([
+        {
+          $match: {
+            name: { $regex: query, $options: "i" },
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            thumbnail: 1,
+            ratings: 1,
+            purchased: 1,
+            description: 1,
+            courseData: 1,
+            price: 1,
+            reviews: 1,
+          },
+        },
+      ]);
+
+      if (!courses.length) {
+        return next(
+          new ErrorHandler("No courses found matching the query", 404)
+        );
+      }
+
+      await redis.set(`search:${query}`, JSON.stringify(courses), "EX", 3600);
+
+      console.log("Through mongodb");
+      res.status(200).json({
+        success: true,
+        courses,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
