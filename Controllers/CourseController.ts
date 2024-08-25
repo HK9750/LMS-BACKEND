@@ -146,27 +146,101 @@ export const getSingleCourse = AsyncErrorHandler(
 export const getAllCourses = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const coursesCache = await redis.get("courses");
-      if (coursesCache) {
-        const courses = JSON.parse(coursesCache);
-        console.log("Through redis");
-        res.status(200).json({
+      const { query, search } = req.query;
+
+      if (query && typeof query === "string") {
+        const searchCache = await redis.get(`search:${query}`);
+        if (searchCache) {
+          const courses = JSON.parse(searchCache);
+          console.log("Through redis (search)");
+          return res.status(200).json({
+            success: true,
+            courses,
+          });
+        }
+
+        let courses = await CourseModel.aggregate([
+          {
+            $match: {
+              name: { $regex: query, $options: "i" },
+            },
+          },
+          {
+            $project: {
+              name: 1,
+              thumbnail: 1,
+              ratings: 1,
+              purchased: 1,
+              description: 1,
+              price: 1,
+              reviews: 1,
+              courseData: {
+                $map: {
+                  input: "$courseData",
+                  as: "item",
+                  in: {
+                    title: "$$item.title",
+                    description: "$$item.description",
+                    videoSection: "$$item.videoSection",
+                  },
+                },
+              },
+            },
+          },
+        ]);
+
+        if (!courses.length) {
+          // If no courses are found, fetch all courses
+          console.log(
+            "No courses found for the search query, fetching all courses..."
+          );
+          courses = await CourseModel.find().select(
+            "-courseData.videoUrl -courseData.questions -courseData.links -courseData.suggestion"
+          );
+
+          if (!courses.length) {
+            return next(new ErrorHandler("No courses found", 404));
+          }
+        } else {
+          await redis.set(
+            `search:${query}`,
+            JSON.stringify(courses),
+            "EX",
+            3600
+          );
+          console.log("Through MongoDB (search)");
+        }
+
+        return res.status(200).json({
           success: true,
           courses,
         });
       } else {
-        const courses = await CourseModel.find().select(
-          "-courseData.videoUrl -courseData.questions -courseData.links -courseData.suggestion"
-        );
-        if (!courses) {
-          return next(new ErrorHandler("No courses found", 404));
+        // Get all courses logic
+        const coursesCache = await redis.get("courses");
+        if (coursesCache) {
+          const courses = JSON.parse(coursesCache);
+          console.log("Through redis (all courses)");
+          return res.status(200).json({
+            success: true,
+            courses,
+          });
+        } else {
+          const courses = await CourseModel.find().select(
+            "-courseData.videoUrl -courseData.questions -courseData.links -courseData.suggestion"
+          );
+
+          if (!courses.length) {
+            return next(new ErrorHandler("No courses found", 404));
+          }
+
+          await redis.set("courses", JSON.stringify(courses));
+          console.log("Through MongoDB (all courses)");
+          return res.status(200).json({
+            success: true,
+            courses,
+          });
         }
-        await redis.set("courses", JSON.stringify(courses));
-        console.log("Through mongodb");
-        res.status(200).json({
-          success: true,
-          courses,
-        });
       }
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
@@ -243,7 +317,7 @@ export const addQuestion = AsyncErrorHandler(
       await NotificationModel.create({
         userId: req.user?._id,
         title: "New Question",
-        message: `A new question has been asked in your course:${content.title}`,
+        message: `A new question has been asked in your Course:${course.name} in the video titled:${content.title}`,
       });
       res.status(200).json({
         success: true,
@@ -486,64 +560,6 @@ export const getTopCourseReviews = AsyncErrorHandler(
       res.status(200).json({
         success: true,
         topCourseReviews,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
-
-export const searchCourses = AsyncErrorHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { query } = req.query;
-
-      if (!query || typeof query !== "string") {
-        return next(new ErrorHandler("Search query is required", 400));
-      }
-
-      const cachedResults = await redis.get(`search:${query}`);
-      if (cachedResults) {
-        const courses = JSON.parse(cachedResults);
-        console.log("Through redis");
-        return res.status(200).json({
-          success: true,
-          courses,
-        });
-      }
-
-      const courses = await CourseModel.aggregate([
-        {
-          $match: {
-            name: { $regex: query, $options: "i" },
-          },
-        },
-        {
-          $project: {
-            name: 1,
-            thumbnail: 1,
-            ratings: 1,
-            purchased: 1,
-            description: 1,
-            courseData: 1,
-            price: 1,
-            reviews: 1,
-          },
-        },
-      ]);
-
-      if (!courses.length) {
-        return next(
-          new ErrorHandler("No courses found matching the query", 404)
-        );
-      }
-
-      await redis.set(`search:${query}`, JSON.stringify(courses), "EX", 3600);
-
-      console.log("Through mongodb");
-      res.status(200).json({
-        success: true,
-        courses,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

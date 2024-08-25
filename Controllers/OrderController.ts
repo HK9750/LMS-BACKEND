@@ -93,8 +93,8 @@ export const createOrder = AsyncErrorHandler(
 
       const notificationData = {
         userId: user._id,
-        title: "Order Placed",
-        message: "Your order has been placed successfully",
+        title: "Order Placed for " + course.name,
+        message: "Your order has been placed successfully for " + course.name,
       };
       await NotificationModel.create(notificationData);
 
