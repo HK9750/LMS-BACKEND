@@ -8,27 +8,27 @@ import cron from "node-cron";
 export const getAllNotifications = AsyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const cachedNotifications = await redis.get("allNotifications");
-      if (cachedNotifications) {
-        const notifications = JSON.parse(cachedNotifications);
-        console.log("Hitting the redis");
-        res.status(200).json({
-          success: true,
-          message: "GET request for user Notifications successful",
-          notifications,
-        });
-      } else {
-        const notifications = await NotificationModel.find().sort({
-          createdAt: -1,
-        });
-        await redis.set("allNotifications", JSON.stringify(notifications));
-        console.log("Hitting mongodb");
-        res.status(200).json({
-          success: true,
-          message: "GET request for user Notifications successful",
-          notifications,
-        });
-      }
+      // const cachedNotifications = await redis.get("allNotifications");
+      // if (cachedNotifications) {
+      //   const notifications = JSON.parse(cachedNotifications);
+      //   console.log("Hitting the redis");
+      //   res.status(200).json({
+      //     success: true,
+      //     message: "GET request for user Notifications successful",
+      //     notifications,
+      //   });
+      // } else {
+      const notifications = await NotificationModel.find().sort({
+        createdAt: -1,
+      });
+      await redis.set("allNotifications", JSON.stringify(notifications));
+      console.log("Hitting mongodb");
+      res.status(200).json({
+        success: true,
+        message: "GET request for user Notifications successful",
+        notifications,
+      });
+      // }
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -45,6 +45,7 @@ export const updateNotification = AsyncErrorHandler(
       }
       notification.isRead = true;
       await notification.save();
+      redis.del("allNotifications");
       res.status(200).json({
         success: true,
         message: "Notification updated successfully",

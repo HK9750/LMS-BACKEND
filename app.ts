@@ -10,6 +10,7 @@ import OrderRoutes from "./Routes/OrderRoutes";
 import LayoutRoutes from "./Routes/LayoutRoutes";
 import AnalyticsRoutes from "./Routes/AnalyticsRoutes";
 import fileUpload from "express-fileupload";
+import { rateLimit } from "express-rate-limit";
 const app = express();
 
 const options = { origin: "http://localhost:3000", credentials: true };
@@ -20,7 +21,13 @@ app.use(cors(options));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Routes of our Application
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+});
+
 app.use("/api/v1", UserRoutes);
 app.use("/api/v1", CourseRoutes);
 app.use("/api/v1", NotificationRoutes);
@@ -50,6 +57,7 @@ app.all("*", (req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
+app.use(limiter);
 app.use(ErrorMiddleWare);
 
 export default app;

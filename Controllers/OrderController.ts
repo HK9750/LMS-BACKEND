@@ -83,7 +83,7 @@ export const createOrder = AsyncErrorHandler(
         return next(new ErrorHandler(error.message, 500));
       }
 
-      user.courses.push({ courseId });
+      user.courses.push({ courseId, coursetitle: course.name });
       await user.save();
 
       course.purchased = (course.purchased || 0) + 1;
