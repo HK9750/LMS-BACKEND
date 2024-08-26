@@ -352,7 +352,7 @@ export const updateAvatar = AsyncErrorHandler(
         return next(new ErrorHandler("No file uploaded", 400));
       }
 
-      const file = req.files.avatar as fileUpload.UploadedFile;
+      const file = req.files.avatar as any;
       const userId = req.user?._id;
 
       if (!userId) {
@@ -367,7 +367,7 @@ export const updateAvatar = AsyncErrorHandler(
       const tempFilePath = path.join(__dirname, "../temp", file.name);
 
       await new Promise<void>((resolve, reject) => {
-        file.mv(tempFilePath, (err) => {
+        file.mv(tempFilePath, (err: any) => {
           if (err) return reject(err);
           resolve();
         });
