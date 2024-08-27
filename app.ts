@@ -15,11 +15,12 @@ import dotenv from "dotenv";
 const app = express();
 dotenv.config();
 
-const options = { origin: process.env.FRONTEND_URL, credentials: true };
+console.log(process.env.FRONTEND_URL);
+const options = { origin: [process.env.FRONTEND_URL], credentials: true };
 
 app.use(fileUpload());
 app.use(express.json({ limit: "50mb" }));
-app.use(cors(options));
+app.use(cors(options as any));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
