@@ -4,7 +4,7 @@
   "main": "build/server.js",
   "type": "commonjs",
   "engines": {
-    "node": "18.x"
+    "node": ">=18.x"
   },
   "scripts": {
     "build": "tsc",
