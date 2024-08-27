@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import { Response } from "express";
 import dotenv from "dotenv";
 import { IUser } from "../Models/UserModel";

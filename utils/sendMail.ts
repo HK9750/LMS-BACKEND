@@ -1,4 +1,8 @@
-import nodemailer, { Transporter } from "nodemailer";
+import nodemailer, {
+  Transporter,
+  SentMessageInfo,
+  SendMailOptions,
+} from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 import dotenv from "dotenv";
 import path from "path";
@@ -14,16 +18,15 @@ interface iMailOptions {
 }
 
 export const sendMail = async (options: iMailOptions) => {
-  const transporter: Transporter<SMTPTransport.SentMessageInfo> =
-    nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      service: process.env.SMTP_SERVICE,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    } as SMTPTransport.Options);
+  const transporter: Transporter<SentMessageInfo> = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    service: process.env.SMTP_SERVICE,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  } as SendMailOptions);
 
   const { to, subject, template, data } = options;
 
