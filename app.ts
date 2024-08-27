@@ -11,9 +11,11 @@ import LayoutRoutes from "./Routes/LayoutRoutes";
 import AnalyticsRoutes from "./Routes/AnalyticsRoutes";
 import fileUpload from "express-fileupload";
 import { rateLimit } from "express-rate-limit";
+import dotenv from "dotenv";
 const app = express();
+dotenv.config();
 
-const options = { origin: "http://localhost:3000", credentials: true };
+const options = { origin: process.env.FRONTEND_URL, credentials: true };
 
 app.use(fileUpload());
 app.use(express.json({ limit: "50mb" }));
