@@ -16,6 +16,21 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/body-parser": "^1.19.5",
+    "@types/cookie-parser": "^1.4.7",
+    "@types/cors": "^2.8.17",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^4.17.21",
+    "@types/express-fileupload": "^1.5.1",
+    "@types/express-rate-limit": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^22.5.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.15",
+    "@types/socket.io": "^3.0.2",
+    "@types/typescript": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "cloudinary": "^2.4.0",
@@ -35,21 +50,5 @@
     "stripe": "^16.8.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.7",
-    "@types/cors": "^2.8.17",
-    "@types/ejs": "^3.1.5",
-    "@types/express": "^4.17.21",
-    "@types/express-fileupload": "^1.5.1",
-    "@types/express-rate-limit": "^6.0.0",
-    "@types/jsonwebtoken": "^9.0.6",
-    "@types/mongoose": "^5.11.97",
-    "@types/node": "^22.5.0",
-    "@types/node-cron": "^3.0.11",
-    "@types/nodemailer": "^6.4.15",
-    "@types/socket.io": "^3.0.2",
-    "@types/typescript": "^2.0.0"
   }
 }
