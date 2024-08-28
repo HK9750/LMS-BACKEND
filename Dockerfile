@@ -13,9 +13,11 @@ RUN npm ci --only=production
 # Copy the rest of the application code
 COPY . .
 
-# Explicitly copy the 'mails' and 'temp' folders
+# Explicitly create the 'temp' folder if it doesn't exist
+RUN mkdir -p /usr/src/app/temp
+
+# Explicitly copy the 'mails' folder (if it exists)
 COPY mails /usr/src/app/mails
-COPY temp /usr/src/app/temp
 
 # Compile TypeScript files (if applicable)
 RUN npm run build
@@ -25,4 +27,3 @@ EXPOSE 8000
 
 # Start the app
 CMD ["npm", "run", "start"]
-
