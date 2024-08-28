@@ -32,16 +32,16 @@ export const accessTokenOptions: iTokenOptions = {
   expires: new Date(Date.now() + accessTokenExpiry * 60 * 1000),
   maxAge: accessTokenExpiry * 60 * 1000,
   httpOnly: true,
-  secure: false,
-  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
 export const refreshTokenOptions: iTokenOptions = {
   expires: new Date(Date.now() + refreshTokenExpiry * 24 * 60 * 60 * 1000),
   maxAge: refreshTokenExpiry * 24 * 60 * 60 * 1000,
   httpOnly: true,
-  secure:false,
-  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
 export const sendToken = async ({
