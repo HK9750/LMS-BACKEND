@@ -16,7 +16,7 @@ const app = express();
 dotenv.config();
 
 console.log(process.env.FRONTEND_URL);
-const options = { origin: [process.env.FRONTEND_URL], credentials: true };
+const options = { origin: true, credentials: true };
 
 app.use(fileUpload());
 app.use(express.json({ limit: "50mb" }));
